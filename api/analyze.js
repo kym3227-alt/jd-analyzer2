@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-    // CORS 설정 (필요시)
+    // CORS 설정
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -19,7 +19,13 @@ export default async function handler(req, res) {
     }
 
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+        const apiKey = process.env.GEMINI_API_KEY;
+        
+        if (!apiKey) {
+            throw new Error('API 키가 설정되지 않았습니다.');
+        }
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -52,10 +58,17 @@ ${jdText}
         });
 
         if (!response.ok) {
-            throw new Error('Gemini API 호출 실패');
+            const errorData = await response.text();
+            console.error('Gemini API Error:', errorData);
+            throw new Error(`Gemini API 응답 실패: ${response.status}`);
         }
 
         const data = await response.json();
+        
+        if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+            throw new Error('API 응답 형식이 올바르지 않습니다.');
+        }
+        
         const resultText = data.candidates[0].content.parts[0].text;
         
         // JSON 추출
@@ -68,7 +81,10 @@ ${jdText}
         res.status(200).json(parsedData);
         
     } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ error: error.message });
+        console.error('Error:', error.message);
+        res.status(500).json({ 
+            error: '분석 중 오류가 발생했습니다.',
+            details: error.message 
+        });
     }
 }
