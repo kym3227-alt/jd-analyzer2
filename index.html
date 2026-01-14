@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 JD 분석기</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 300px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border 0.3s;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 30px;
+        }
+        .loading.active {
+            display: block;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .result-section {
+            margin-top: 40px;
+            display: none;
+        }
+        .result-section.active {
+            display: block;
+        }
+        .result-section h2 {
+            color: #667eea;
+            margin-bottom: 25px;
+            font-size: 24px;
+        }
+        .field {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 5px solid #667eea;
+            transition: transform 0.2s;
+        }
+        .field:hover {
+            transform: translateX(5px);
+        }
+        .field h3 {
+            margin: 0 0 12px 0;
+            color: #667eea;
+            font-size: 18px;
+        }
+        .field p {
+            color: #333;
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+        .empty {
+            color: #999;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 JD 분석기</h1>
+        <p class="subtitle">채용공고를 붙여넣으면 AI가 자동으로 분석해드려요!</p>
+        
+        <textarea id="jdInput" placeholder="여기에 채용공고 전체를 복사해서 붙여넣으세요...
+
+예시:
+[회사명] 채용공고
+포지션: Product Manager
+..."></textarea>
+        
+        <button onclick="analyzeJD()" id="analyzeBtn">분석하기</button>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>🤖 AI가 열심히 분석하고 있어요...</p>
+        </div>
+        
+        <div class="result-section" id="results">
+            <h2>📊 분석 결과</h2>
+            <div id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        async function analyzeJD() {
+            const jdText = document.getElementById('jdInput').value;
+            const button = document.getElementById('analyzeBtn');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            
+            if (!jdText.trim()) {
+                alert('채용공고를 입력해주세요!');
+                return;
+            }
+            
+            // UI 상태 변경
+            button.disabled = true;
+            loading.classList.add('active');
+            results.classList.remove('active');
+            
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ jdText })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('분석 중 오류가 발생했습니다.');
+                }
+                
+                const data = await response.json();
+                displayResults(data);
+                
+            } catch (error) {
+                alert('오류: ' + error.message);
+                console.error(error);
+            } finally {
+                button.disabled = false;
+                loading.classList.remove('active');
+            }
+        }
+        
+        function displayResults(data) {
+            const resultContent = document.getElementById('resultContent');
+            resultContent.innerHTML = '';
+            
+            const fields = [
+                { key: '회사명', emoji: '🏢' },
+                { key: '포지션명', emoji: '💼' },
+                { key: '회사소개', emoji: '📝' },
+                { key: '급여', emoji: '💰' },
+                { key: '회사위치', emoji: '📍' },
+                { key: '지원자격', emoji: '✅' },
+                { key: '우대사항', emoji: '⭐' },
+                { key: '주요업무', emoji: '📋' },
+                { key: '기타', emoji: '💡' }
+            ];
+            
+            fields.forEach(field => {
+                const value = data[field.key];
+                if (value && value !== '정보 없음' && value.trim() !== '') {
+                    const div = document.createElement('div');
+                    div.className = 'field';
+                    div.innerHTML = `
+                        <h3>${field.emoji} ${field.key}</h3>
+                        <p>${value.replace(/\n/g, '<br>')}</p>
+                    `;
+                    resultContent.appendChild(div);
+                }
+            });
+            
+            if (resultContent.children.length === 0) {
+                resultContent.innerHTML = '<p class="empty">분석 결과를 찾을 수 없습니다. JD 형식을 확인해주세요.</p>';
+            }
+            
+            document.getElementById('results').classList.add('active');
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    </script>
+</body>
+</html>
